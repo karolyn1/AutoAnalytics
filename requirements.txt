@@ -6,3 +6,5 @@ plotly
 scipy
 openpyxl
 anthropic
+matplotlib
+statsmodels
