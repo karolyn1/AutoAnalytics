@@ -17,7 +17,10 @@ from scipy import stats
 import io, base64, json, datetime, warnings
 warnings.filterwarnings("ignore")
 
+
+# Aquí se realiza la configuración de la página con streamlit
 st.set_page_config(page_title="AutoAnalytics", page_icon="🔬", layout="wide", initial_sidebar_state="expanded")
+
 
 st.markdown("""
 <style>
@@ -158,6 +161,8 @@ div[data-testid="stFileUploadDropzone"] {
 </style>
 """, unsafe_allow_html=True)
 COLORS = px.colors.qualitative.Plotly
+
+# Esto es para realizar un demo, y que la app muestre datos aunque no se cargue nada
 
 def make_demo():
     np.random.seed(42); n=500
@@ -693,7 +698,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     st.markdown('<div class="side-box">', unsafe_allow_html=True)
-    max_k = st.slider("Máx. clusters", 2, 10, 6)
+    max_k = st.slider("Máx. clusters", 2, 10, 6) # Num. Max de clusters (agrupamiento)
     corr_thr = st.slider("Umbral correlación", 0.3, 0.95, 0.6, 0.05)
     cont = st.slider("Contaminación outliers", 0.01, 0.20, 0.05, 0.01)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -702,7 +707,7 @@ with st.sidebar:
 # CARGA DE DATOS
 # =========================
 if use_demo:
-    df = make_demo()
+    df = make_demo() #Aquí llamamos al demo, en caso de que no se suba ningún dato
     fname = "demo_clientes"
     st.markdown(
         '<div class="ifbox"><i class="fa-solid fa-flask"></i> Datos de demostración: 500 clientes con variables financieras.</div>',
@@ -745,7 +750,8 @@ if df is None:
     st.markdown("""
     <div class="empty-box">
         <div class="empty-icon">
-            <i class="fa-solid fa-cloud-arrow-up"></i>
+  
+                          <i class="fa-solid fa-cloud-arrow-up"></i>
         </div>
         <h2>Carga tu dataset para comenzar</h2>
         <p>Sube un archivo CSV o Excel para generar el análisis automático.</p>
@@ -827,7 +833,7 @@ tabs = st.tabs(tab_labels)
 ch_exp = {}
 pdf_pages = []
 
-    # TAB 0
+    # TAB 0 DE CATEGORIAS, MUESTRA CONTEO DE CATEGORIAS, GRAFICOS, TABLA CRUZADA, MAPA DE CALOR. USA PLOTLY
 with tabs[0]:
         st.markdown('<div class="stitle">Análisis de Variables Categorias</div>', unsafe_allow_html=True)
         if not cat_cols:
