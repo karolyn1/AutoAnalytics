@@ -388,7 +388,7 @@ def main():
         corr_thr = st.slider("Umbral correlación", 0.3, 0.95, 0.6, 0.05)
         cont = st.slider("Contaminación outliers", 0.01, 0.20, 0.05, 0.01)
         st.markdown("---")
-        api_key = st.text_input("🤖 API Key Anthropic", type="password")
+        
 
     # ── Carga de datos ────────────────────────────────────────────────────────
     df = None; fname = "dataset"; sheet_name_used = None; header_row_used = 0
@@ -607,7 +607,7 @@ def main():
                 else:
                     st.success("No hay registros con comentarios.")
 
-    # ══ TAB 2: NUMERIC ════════════════════════════════════════════════════════
+    # ══ TAB 2: ANALISIS DE VARIABLES NUMERICAS ════════════════════════════════════════════════════════
     with tabs[1]:
         st.markdown('<div class="stitle">📊 Análisis de Variables Numéricas</div>', unsafe_allow_html=True)
         if not nc:
@@ -742,7 +742,7 @@ def main():
         else:
             st.info("Se requieren ≥ 2 variables numéricas y ≥ 15 registros para clustering.")
 
-    # ══ TAB 6: RELATIONSHIPS ══════════════════════════════════════════════════
+    # ══ TAB 6: RELACIONES ══════════════════════════════════════════════════
     with tabs[5]:
         if len(nc) >= 2:
             st.markdown('<div class="stitle">🔄 Dispersión entre Numéricas</div>', unsafe_allow_html=True)
@@ -778,7 +778,7 @@ def main():
         if len(cat_cols) >= 1 and not nc:
             st.info("Solo hay variables categóricas. Los análisis de relación están en la pestaña 🏷️ Categóricas.")
 
-    # ══ TAB 7: EXPORT ═════════════════════════════════════════════════════════
+    # ══ TAB 7: EXPORTAR ═════════════════════════════════════════════════════════
     with tabs[6]:
         st.markdown('<div class="stitle">💾 Exportar Resultados</div>', unsafe_allow_html=True)
         c1, c2 = st.columns(2)
@@ -802,39 +802,9 @@ def main():
                 f'text-align:center;padding:14px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:10px">'
                 f'⬇️ Descargar CSV</a>', unsafe_allow_html=True)
 
-        st.markdown('<div class="stitle">🤖 Análisis con IA </div>', unsafe_allow_html=True)
-        if api_key:
-            if st.button("🚀 Generar Análisis con Claude", use_container_width=True):
-                try:
-                    import anthropic
-                    client = anthropic.Anthropic(api_key=api_key)
-                    # Build context including categorical data
-                    cat_ctx = "\n".join([f"  {col}: {dict(list(d['counts'].head(8).items()))}" for col,d in cat_analysis.items()])
-                    ctx = f"""Dataset: {fname} | {len(df):,} registros × {len(df.columns)} variables
-Variables numéricas: {nc}
-Variables categóricas: {cat_cols}
-Distribución de categóricas:
-{cat_ctx}
-Estadísticas numéricas: {dstats[['Variable','Media','Mediana','Asimetría']].to_string() if not dstats.empty else 'N/A'}
-Correlaciones: {json.dumps(corrs[:5],ensure_ascii=False)}
-Outliers: {ol.get('isolation_forest',{}).get('count',0)} ({ol.get('isolation_forest',{}).get('pct',0)}%)
-Clustering: {cl['best_k'] if cl else 'N/A'} grupos, silhouette={cl['silhouette'] if cl else 'N/A'}"""
-                    with st.spinner("🤖 Claude analizando..."):
-                        r = client.messages.create(model="claude-sonnet-4-6", max_tokens=1500,
-                            messages=[{"role":"user","content":
-                                f"Eres experto en análisis de datos. Analiza estos resultados y proporciona: "
-                                f"1) Resumen ejecutivo (3-4 párrafos incluyendo análisis de los datos categóricos), "
-                                f"2) Hallazgos más importantes, 3) Recomendaciones, 4) Alertas. Contexto:\n{ctx}\n"
-                                f"Responde en español para tomadores de decisiones no técnicos."}])
-                        st.markdown('<div style="background:linear-gradient(135deg,#1a2d1a,#1e3a2a);border:1px solid #2a5a3a;border-radius:12px;padding:22px;margin:10px 0"><h3 style="color:#4caf50;margin-top:0">🤖 Análisis de Claude</h3>', unsafe_allow_html=True)
-                        st.markdown(r.content[0].text)
-                        st.markdown("</div>", unsafe_allow_html=True)
-                except Exception as e:
-                    st.error(f"Error API: {e}")
-        else:
-            st.markdown('<div class="wbox">💡 Ingresa tu <b>API Key de Anthropic</b> para análisis con Claude.</div>', unsafe_allow_html=True)
+    
 
-        # Final summary
+        # Resumen Final
         st.markdown('<div class="stitle">📋 Resumen Final</div>', unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         with c1:
