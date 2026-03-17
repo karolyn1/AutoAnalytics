@@ -2,19 +2,19 @@
 AutoAnalytics - Análisis Inteligente de Datos
 Analiza automáticamente cualquier tipo de datos: numéricos, categóricos, texto
 """
-import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.express as px
+import streamlit as st #construye la interfaz
+import pandas as pd #manipula datos tobulares
+import numpy as np #operaciones matemáticas y generación de datos
+import plotly.express as px #para gráficos
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
-from sklearn.ensemble import IsolationForest
-from sklearn.decomposition import PCA
-from sklearn.metrics import silhouette_score
-from scipy import stats
-import io, base64, json, datetime, warnings
+from sklearn.preprocessing import StandardScaler #libs de ML, normaliza datos
+from sklearn.cluster import KMeans #esta realiza clustering
+from sklearn.ensemble import IsolationForest #esta detecta anomalías en los datos
+from sklearn.decomposition import PCA #esta realiza reducción de dimensiones
+from sklearn.metrics import silhouette_score #usada para evaluar clusters
+from scipy import stats #usada para z-score en outliers
+import io, base64, json, datetime, warnings 
 warnings.filterwarnings("ignore")
 
 
@@ -39,7 +39,7 @@ h1,h2,h3{color:#e0e0e0} p,li{color:#b0bec5}
 div[data-testid="stFileUploadDropzone"]{background:#161b27 !important;border:2px dashed #2a3f55 !important;border-radius:12px !important}
 </style>""", unsafe_allow_html=True)
 
-COLORS = px.colors.qualitative.Plotly
+COLORS = px.colors.qualitative.Plotly #paleta de colores estándar para gráficos
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -651,7 +651,7 @@ def main():
         with st.expander("👁️ Vista previa del dataset"):
             st.dataframe(df.head(50), use_container_width=True)
 
-    # ══ TAB 3: CORRELATIONS ═══════════════════════════════════════════════════
+    # ══ TAB 3: CORRELACIONES ═══════════════════════════════════════════════════
     with tabs[2]:
         if P is not None and len(nc) >= 2:
             cl2, cr2 = st.columns([2,1])
@@ -802,8 +802,7 @@ def main():
                 f'text-align:center;padding:14px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:10px">'
                 f'⬇️ Descargar CSV</a>', unsafe_allow_html=True)
 
-        # Claude AI analysis
-        st.markdown('<div class="stitle">🤖 Análisis con IA (Claude)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="stitle">🤖 Análisis con IA </div>', unsafe_allow_html=True)
         if api_key:
             if st.button("🚀 Generar Análisis con Claude", use_container_width=True):
                 try:
