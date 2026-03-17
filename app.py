@@ -85,7 +85,7 @@ def smart_read_excel(file_obj, sheet_name=0):
     n_dupes = n_antes - len(df)
 
     return df, best_row, n_dupes
-
+# Esta función recorre las columnas del dataset y determina el tipo de dato de cada columna ya sea numérica, categórica o booleana, etc...
 def detect_types(df):
     """Clasifica columnas: numeric, categorical, temporal, boolean, text_id, text_long."""
     t = {}
@@ -119,6 +119,8 @@ def detect_types(df):
                 t[c] = "text"
     return t
 
+# Esta función analiza las variables categóricas y calcula cuantas veces aparece el mismo valor, el porcentaje que consume 
+# y la moda o cuál es la que más se repite
 def analyze_categorical(df, cat_cols):
     """Análisis profundo de columnas categóricas."""
     results = {}
@@ -134,6 +136,7 @@ def analyze_categorical(df, cat_cols):
         }
     return results
 
+# Esta función detecta los valores atípicos que se desvían de la mediana del dataset
 def do_outliers(df, nc, cont=.05):
     cl = df[nc].dropna()
     if len(cl) < 10: return {}
@@ -151,6 +154,7 @@ def do_outliers(df, nc, cont=.05):
             "isolation_forest": {"count": int(ip.sum()), "pct": round(ip.mean()*100, 2), "indices": cl.index[ip].tolist()},
             "per_column": pc}
 
+# Esta función aplica los clusteres entre la similitud de sus variables numéricas y realiza la predicción
 def do_kmeans(df, nc, mk=6):
     cl = df[nc].dropna()
     if len(cl) < 15 or len(nc) < 2: return None
@@ -171,9 +175,10 @@ def do_kmeans(df, nc, mk=6):
             "pca_df": pdf, "silhouette": round(sils[bi], 4),
             "k_range": list(kr), "inertias": ins, "silhouettes": sils}
 
+# Esta función calcula las matrices de correlación entre todas las variables numéricas y muestra los pares que mayor correlación tengan
 def do_corr(df, nc, thr=.6):
     if len(nc) < 2: return None, None, []
-    P = df[nc].corr("pearson"); S = df[nc].corr("spearman")
+    P = df[nc].corr("pearson"); S = df[nc].corr("spearman") #matrices de correlación
     strong = []; seen = set()
     for i, c1 in enumerate(nc):
         for j, c2 in enumerate(nc):
@@ -188,6 +193,7 @@ def do_corr(df, nc, thr=.6):
     strong.sort(key=lambda x: abs(x["pearson_r"]), reverse=True)
     return P, S, strong
 
+# Esta función recurre todos los valores númericos almacenados en el dataframe y permite hacer la estadística descriptiva automáticamente
 def do_stats(df, nc):
     rows = []
     for c in nc:
@@ -201,6 +207,7 @@ def do_stats(df, nc):
             "CV%":round(s.std()/s.mean()*100,2) if s.mean()!=0 else np.nan})
     return pd.DataFrame(rows)
 
+# Analiza todos los resultados de las funciones previas y genera un mensaje entendible para el usuario
 def auto_insights(df, vt, ol, cl, co, cat_analysis):
     """Genera insights inteligentes basados en TODOS los tipos de datos."""
     ins, ale, inf = [], [], []
@@ -357,6 +364,39 @@ th{{background:#1e3a55;color:#4db8ff;padding:8px}}td{{padding:7px;border-bottom:
 <div class="ft"><p>Generado por <b>AutoAnalytics</b> — {now}</p></div>
 </div></body></html>"""
 
+# Generación del archivo reporte en formato JSON.
+def make_json_report(df, vt, ds, ol, corrs, ins, ale, inf):
+    """Genera un resumen del análisis exploratorio en formato JSON interpretable."""
+    nc = [c for c, t in vt.items() if t == "numeric"]
+    cat_cols = [c for c, t in vt.items() if t == "categorical"]
+
+    # Limpiar etiquetas HTML de los insights (quitar <b>, etc.)
+    import re
+    def clean(text): return re.sub(r"<[^>]+>", "", text)
+
+    reporte = {
+        "resumen_dataset": {
+            "registros": len(df),
+            "variables": len(df.columns),
+            "numericas": len(nc),
+            "categoricas": len(cat_cols),
+            "valores_faltantes": int(df.isnull().sum().sum())
+        },
+        "estadisticas_descriptivas": ds.to_dict(orient="records") if not ds.empty else [],
+        "correlaciones_fuertes": corrs if corrs else [],
+        "outliers": {
+            "z_score": ol.get("z_score", {}) if ol else {},
+            "iqr": ol.get("iqr", {}) if ol else {},
+            "isolation_forest": {
+                k: v for k, v in ol.get("isolation_forest", {}).items() if k != "indices"
+            } if ol else {}
+        },
+        "insights": [clean(x) for x in ins],
+        "alertas": [clean(x) for x in ale],
+        "informacion": [clean(x) for x in inf],
+        "generado": datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+    }
+    return json.dumps(reporte, ensure_ascii=False, indent=2)
 
 # ── Main App ──────────────────────────────────────────────────────────────────
 def main():
@@ -467,13 +507,14 @@ def main():
     cat_cols = [c for c,t in vt.items() if t=="categorical"]
     temp_cols = [c for c,t in vt.items() if t=="temporal"]
 
+    #En este módulo se realiza la ejecución de los datos usando el streamlit que nos permite aplicar ML en aplicaciones.
     with st.spinner("⚡ Analizando datos..."):
-        dstats = do_stats(df, nc)
-        P, S, corrs = do_corr(df, nc, corr_thr)
-        ol = do_outliers(df, nc, cont) if len(nc) >= 1 else {}
-        cl = do_kmeans(df, nc, max_k) if len(nc) >= 2 else None
-        cat_analysis = analyze_categorical(df, cat_cols)
-        ins, ale, inf = auto_insights(df, vt, ol, cl, corrs, cat_analysis)
+        dstats = do_stats(df, nc) # Estadísticas descriptivas
+        P, S, corrs = do_corr(df, nc, corr_thr) # Matrices de correlación
+        ol = do_outliers(df, nc, cont) if len(nc) >= 1 else {} # Detección de outliers
+        cl = do_kmeans(df, nc, max_k) if len(nc) >= 2 else None # Clustering
+        cat_analysis = analyze_categorical(df, cat_cols) # Análisis categórico
+        ins, ale, inf = auto_insights(df, vt, ol, cl, corrs, cat_analysis) # Generación de insights
 
     # ── Métricas superiores ───────────────────────────────────────────────────
     cols = st.columns(6)
@@ -781,7 +822,7 @@ def main():
     # ══ TAB 7: EXPORTAR ═════════════════════════════════════════════════════════
     with tabs[6]:
         st.markdown('<div class="stitle">💾 Exportar Resultados</div>', unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns(3)
         with c1:
             st.markdown('<div class="ifbox"><b>📄 Reporte HTML</b><br>Incluye todos los gráficos, tablas, insights y análisis categórico.</div>', unsafe_allow_html=True)
             if st.button("🔨 Generar Reporte HTML", use_container_width=True):
@@ -801,7 +842,17 @@ def main():
                 f'style="display:block;background:linear-gradient(135deg,#2e7d32,#1b5e20);color:white;'
                 f'text-align:center;padding:14px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:10px">'
                 f'⬇️ Descargar CSV</a>', unsafe_allow_html=True)
-
+        with c3:
+            st.markdown('<div class="ifbox"><b>🗂️ Reporte JSON</b><br>Exporta estadísticas, correlaciones e insights en formato JSON.</div>', unsafe_allow_html=True)
+            if st.button("🔨 Generar Reporte JSON", use_container_width=True):
+                json_str = make_json_report(df, vt, dstats, ol, corrs, ins, ale, inf)
+                jb64 = base64.b64encode(json_str.encode()).decode()
+                ts = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+                st.markdown(f'<a href="data:application/json;base64,{jb64}" download="AutoAnalytics_{fname}_{ts}.json" '
+                    f'style="display:block;background:linear-gradient(135deg,#6a1b9a,#4a148c);color:white;'
+                    f'text-align:center;padding:14px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:10px">'
+                    f'⬇️ Descargar JSON</a>', unsafe_allow_html=True)
+                st.success("✅ JSON generado.")
     
 
         # Resumen Final
