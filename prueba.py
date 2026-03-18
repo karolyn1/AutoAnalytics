@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import plotly.express as px
 
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import KMeans, DBSCAN
@@ -53,21 +54,15 @@ def clustering_dbscan(df, columnas_numericas, eps=0.5, min_samples=5):
     df["cluster_dbscan"] = dbscan.fit_predict(df[columnas_numericas])
     return df
 
-def graficos_basicos(df, columnas_numericas):
-    for col in columnas_numericas:
-        fig, axes = plt.subplots(1,2, figsize=(10,4))
-        sns.histplot(df[col], kde=True, ax=axes[0])
-        axes[0].set_title(f"Histograma de {col}")
-        sns.boxplot(x=df[col], ax=axes[1])
-        axes[1].set_title(f"Boxplot de {col}")
-        st.pyplot(fig)
-
 # =========================
 # Interfaz Streamlit
 # =========================
-st.title("📊 Análisis Automatizado de Datos")
+st.set_page_config(page_title="Análisis Inteligente de Datos", layout="wide")
 
-archivo = st.file_uploader("Carga tu archivo CSV o Excel", type=["csv","xlsx"])
+st.sidebar.title("⚙️ Opciones")
+archivo = st.sidebar.file_uploader("Carga tu archivo CSV o Excel", type=["csv","xlsx"])
+
+st.title("📊 Dashboard de Análisis Automatizado")
 
 if archivo:
     if archivo.name.endswith(".csv"):
@@ -75,37 +70,47 @@ if archivo:
     else:
         df = pd.read_excel(archivo)
 
-    st.write("### Vista previa de los datos")
+    st.write("### 👀 Vista previa de los datos")
     st.dataframe(df.head())
 
     tipos = detectar_tipos(df)
-    st.write("### Tipos de variables detectadas:", tipos)
+    st.sidebar.write("Tipos de variables detectadas:", tipos)
 
-    # Estadísticas básicas
-    if tipos["numericas"]:
-        st.write("### Estadísticas descriptivas")
-        st.write(estadisticas_basicas(df, tipos["numericas"]))
+    # Tabs para organizar resultados
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Estadísticas", "🔗 Correlación", "🚨 Outliers", "🧩 Clustering", "📊 Visualizaciones"])
 
-        # Correlación
-        st.write("### Matriz de correlación")
-        matriz_correlacion(df, tipos["numericas"])
+    with tab1:
+        if tipos["numericas"]:
+            st.write("#### Estadísticas descriptivas")
+            st.write(estadisticas_basicas(df, tipos["numericas"]))
 
-        # Outliers
-        columna_outlier = st.selectbox("Selecciona columna para detección de outliers", tipos["numericas"])
-        st.write("#### Outliers Z-score")
-        st.dataframe(outliers_zscore(df, columna_outlier))
-        st.write("#### Outliers IQR")
-        st.dataframe(outliers_iqr(df, columna_outlier))
-        st.write("#### Outliers Isolation Forest")
-        st.dataframe(outliers_isolation_forest(df, tipos["numericas"]))
+    with tab2:
+        if tipos["numericas"]:
+            st.write("#### Matriz de correlación")
+            matriz_correlacion(df, tipos["numericas"])
 
-        # Clustering
-        st.write("### Clustering automático")
-        n_clusters = st.slider("Número de clusters (KMeans)", 2, 10, 3)
-        df = clustering_kmeans(df, tipos["numericas"], n_clusters)
-        df = clustering_dbscan(df, tipos["numericas"])
-        st.dataframe(df.head())
+    with tab3:
+        if tipos["numericas"]:
+            columna_outlier = st.selectbox("Selecciona columna para outliers", tipos["numericas"])
+            st.write("##### Outliers Z-score")
+            st.dataframe(outliers_zscore(df, columna_outlier))
+            st.write("##### Outliers IQR")
+            st.dataframe(outliers_iqr(df, columna_outlier))
+            st.write("##### Outliers Isolation Forest")
+            st.dataframe(outliers_isolation_forest(df, tipos["numericas"]))
 
-        # Visualizaciones
-        st.write("### Visualizaciones básicas")
-        graficos_basicos(df, tipos["numericas"])
+    with tab4:
+        if tipos["numericas"]:
+            n_clusters = st.slider("Número de clusters (KMeans)", 2, 10, 3)
+            df = clustering_kmeans(df, tipos["numericas"], n_clusters)
+            df = clustering_dbscan(df, tipos["numericas"])
+            st.write("#### Resultados con clustering")
+            st.dataframe(df.head())
+            st.download_button("⬇️ Descargar resultados en CSV", df.to_csv(index=False).encode("utf-8"), "resultados.csv", "text/csv")
+
+    with tab5:
+        if tipos["numericas"]:
+            st.write("#### Histogramas interactivos")
+            for col in tipos["numericas"]:
+                fig = px.histogram(df, x=col, nbins=20, title=f"Histograma de {col}")
+                st.plotly_chart(fig, use_container_width=True)
