@@ -54,6 +54,7 @@ def detectar_tipos(df):
     return {
         "numericas": df.select_dtypes(include=[np.number]).columns.tolist(),
         "categoricas": df.select_dtypes(include=["object"]).columns.tolist(),
+        "texto": df.select_dtypes(include=["string"]).columns.tolist(),
         "temporales": df.select_dtypes(include=["datetime64"]).columns.tolist(),
         "booleanas": df.select_dtypes(include=["bool"]).columns.tolist()
     }
@@ -62,19 +63,49 @@ def estadisticas_basicas(df, columnas_numericas):
     # Usa Pandas para generar estadísticas descriptivas
     return df[columnas_numericas].describe()
 
-def matriz_correlacion_fig(df, columnas_numericas):
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def matriz_correlacion_fig(df, columnas_numericas, figsize=(20,8), triangular=True, cmap="coolwarm"):
+
+    # Subconjunto y copia para no modificar df original
     datos = df[columnas_numericas].copy()
-    datos = datos.fillna(datos.mean())
 
-    # Usa Pandas para calcular correlación
-    corr = datos.corr(method="pearson")
+    # Imputar NaN solo en columnas numéricas (con la media)
+    datos = datos.apply(lambda s: s.fillna(s.mean()), axis=0)
 
-    # Usa Matplotlib para crear la figura
-    # Usa Seaborn para dibujar el heatmap
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.heatmap(corr, annot=True, cmap="coolwarm", ax=ax)
-    ax.set_title("Matriz de correlación")
-    return fig, corr
+    # Calcular ambas correlaciones
+    corr_pearson = datos.corr(method="pearson")
+    corr_spearman = datos.corr(method="spearman")
+
+    # Máscara para mostrar solo triángulo inferior, si se desea, esto es para evitar valores duplicados
+    mask = None
+    if triangular:
+        mask = np.triu(np.ones_like(corr_pearson, dtype=bool))
+
+    # Crear figura con dos subplots
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+
+    # Heatmap Pearson
+    sns.heatmap(
+        corr_pearson, mask=mask, annot=True, fmt=".2f",
+        cmap=cmap, vmin=-1, vmax=1, center=0,
+        square=True, cbar_kws={"shrink": 0.8}, ax=axes[0]
+    )
+    axes[0].set_title("Matriz de correlación (Pearson)")
+
+    # Heatmap Spearman
+    sns.heatmap(
+        corr_spearman, mask=mask, annot=True, fmt=".2f",
+        cmap=cmap, vmin=-1, vmax=1, center=0,
+        square=True, cbar_kws={"shrink": 0.8}, ax=axes[1]
+    )
+    axes[1].set_title("Matriz de correlación (Spearman)")
+
+    plt.tight_layout()
+    return fig, corr_pearson, corr_spearman
 
 def outliers_zscore(df, columna):
     df_temp = df.copy()
@@ -378,48 +409,50 @@ if archivo:
             st.write(stats_df)
 
     with tab2:
-        if tipos["numericas"]:
-            # Pandas calcula la correlación
-            # Matplotlib crea la figura
-            # Seaborn dibuja el heatmap
-            corr_fig, corr_df = matriz_correlacion_fig(df, tipos["numericas"])
+        if len(tipos["numericas"]) < 2:
+            st.warning("Se requieren al menos 2 columnas numéricas para calcular correlaciones.")
+        else:
+    
+            if tipos["numericas"]:
+        # Calcula ambas correlaciones y la figura combinada
+                corr_fig, corr_pearson, corr_spearman = matriz_correlacion_fig(
+                df, tipos["numericas"], triangular=True
+        )
 
-            header_col1, header_col2, header_col3 = st.columns([7, 1, 1])
+        # --- Header general ---
+                header_col1, _, _ = st.columns([7, 1, 1])
+                with header_col1:
+                    st.markdown(
+                '<div class="section-title"><i class="fa-solid fa-link"></i> Matriz de correlación</div>',
+                unsafe_allow_html=True
+            )
 
-            with header_col1:
-                st.markdown(
-                    '<div class="section-title"><i class="fa-solid fa-link"></i> Matriz de correlación</div>',
-                    unsafe_allow_html=True
-                )
-
-            # Streamlit crea botón para descargar PDF
-            # El PDF usa Matplotlib
-            with header_col2:
+        # --- Bloque Pearson ---
+                st.subheader("Pearson")
+                st.dataframe(corr_pearson.style.background_gradient(cmap="coolwarm"))
                 st.download_button(
-                    "PDF",
-                    data=generar_pdf_correlacion(corr_df, corr_fig),
-                    file_name="correlacion.pdf",
-                    mime="application/pdf",
-                    key="tab_corr_pdf",
-                    use_container_width=True
-                )
+            "Descargar Pearson (CSV)",
+            data=corr_pearson.to_csv().encode("utf-8"),
+            file_name="correlacion_pearson.csv",
+            mime="text/csv",
+            key="pearson_csv"
+        )
 
-            # Streamlit crea botón para descargar HTML
-            # El HTML incluye la tabla de Pandas y el heatmap convertido a imagen
-            with header_col3:
+        # --- Bloque Spearman ---
+                st.subheader("Spearman")
+                st.dataframe(corr_spearman.style.background_gradient(cmap="coolwarm"))
                 st.download_button(
-                    "HTML",
-                    data=generar_html_correlacion(corr_df, corr_fig),
-                    file_name="correlacion.html",
-                    mime="text/html",
-                    key="tab_corr_html",
-                    use_container_width=True
-                )
+            "Descargar Spearman (CSV)",
+            data=corr_spearman.to_csv().encode("utf-8"),
+            file_name="correlacion_spearman.csv",
+            mime="text/csv",
+            key="spearman_csv"
+        )
 
-            # Streamlit muestra el heatmap
-            # Heatmap hecho con Seaborn sobre una figura Matplotlib
-            st.pyplot(corr_fig)
-
+        # Figura con ambos heatmaps
+                st.pyplot(corr_fig)
+            else:
+                st.info("No hay columnas numéricas para calcular correlaciones.")
     with tab3:
         if tipos["numericas"]:
             # Streamlit crea el selector de columna
