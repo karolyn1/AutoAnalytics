@@ -8,6 +8,7 @@ import io
 import base64
 import json
 import re
+import csv
 
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import KMeans, DBSCAN
@@ -409,8 +410,6 @@ def mostrar_relaciones(df, tipos):
             unsafe_allow_html=True
         )
 
-
-
 # generación de Insights automáticos
 def generar_insights(df, tipos, corr_pearson):
     # Analiza los resultados del EDA y genera frases interpretables automáticamente.
@@ -534,10 +533,23 @@ st.markdown(
 )
 
 if archivo:
-    if archivo.name.endswith(".csv"):
-        df = pd.read_csv(archivo)
-    else:
-        df = pd.read_excel(archivo)
+  
+
+    if archivo:
+        if archivo.name.endswith(".csv"):
+        # Leer primera línea para detectar separador
+            first_line = archivo.readline().decode("utf-8")
+            archivo.seek(0)  # volver al inicio
+
+            if ";" in first_line:
+                df = pd.read_csv(archivo, sep=";")
+            elif "," in first_line:
+                df = pd.read_csv(archivo, sep=",")
+            else:
+            # Si no hay ni coma ni punto y coma, usar read_csv normal
+                df = pd.read_csv(archivo)
+        else:
+            df = pd.read_excel(archivo)
 
     st.markdown(
         '<div class="section-title"><i class="fa-solid fa-table"></i> Vista previa de los datos</div>',
