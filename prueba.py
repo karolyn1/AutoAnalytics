@@ -705,11 +705,12 @@ if archivo:
              # Streamlit muestra tabla de outliers por Isolation Forest
             st.markdown('<div class="sub-title"><i class="fa-solid fa-shield-halved"></i> Outliers Isolation Forest</div>', unsafe_allow_html=True)
             st.dataframe(iso_df)
-
+            
     with tab4:
         if tipos["numericas"]:
             # Streamlit crea el slider
             n_clusters = st.slider("Número de clusters (KMeans)", 2, 10, 3)
+
             # Scikit-learn se usa para clustering con KMeans y DBSCAN
             df_kmeans  = clustering_kmeans(df, tipos["numericas"], n_clusters)
             df_cluster = clustering_dbscan(df_kmeans, tipos["numericas"])
@@ -721,7 +722,6 @@ if archivo:
                     unsafe_allow_html=True
                 )
             # Streamlit crea botón para descargar PDF
-            # El PDF usa Matplotlib
             with header_col2:
                 st.download_button(
                     "PDF", data=generar_pdf_clustering(df_cluster),
@@ -729,7 +729,6 @@ if archivo:
                     key="tab_cluster_pdf", use_container_width=True
                 )
             # Streamlit crea botón para descargar HTML
-            # El HTML usa tabla de Pandas
             with header_col3:
                 st.download_button(
                     "HTML", data=generar_html_clustering(df_cluster),
@@ -738,8 +737,68 @@ if archivo:
                 )
 
             # Streamlit muestra la tabla del clustering
-            st.markdown('<div class="sub-title"><i class="fa-solid fa-diagram-project"></i> Resultados con clustering</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="sub-title"><i class="fa-solid fa-diagram-project"></i> Resultados con clustering</div>',
+                unsafe_allow_html=True
+            )
             st.dataframe(df_cluster.head())
+
+            # Gráficos de clustering
+            st.markdown(
+                '<div class="sub-title"><i class="fa-solid fa-chart-scatter"></i> Gráficos de clustering</div>',
+                unsafe_allow_html=True
+            )
+
+            # Cantidad de elementos por cluster KMeans
+            conteo_kmeans = df_cluster["cluster_kmeans"].value_counts().sort_index().reset_index()
+            conteo_kmeans.columns = ["cluster_kmeans", "cantidad"]
+
+            fig_bar_kmeans = px.bar(
+                conteo_kmeans,
+                x="cluster_kmeans",
+                y="cantidad",
+                title="Cantidad de registros por cluster (KMeans)",
+                text="cantidad"
+            )
+            st.plotly_chart(fig_bar_kmeans, use_container_width=True)
+
+            # Cantidad de elementos por cluster DBSCAN
+            conteo_dbscan = df_cluster["cluster_dbscan"].value_counts().sort_index().reset_index()
+            conteo_dbscan.columns = ["cluster_dbscan", "cantidad"]
+
+            fig_bar_dbscan = px.bar(
+                conteo_dbscan,
+                x="cluster_dbscan",
+                y="cantidad",
+                title="Cantidad de registros por cluster (DBSCAN)",
+                text="cantidad"
+            )
+            st.plotly_chart(fig_bar_dbscan, use_container_width=True)
+
+            # Scatter plot usando las dos primeras columnas numéricas
+            if len(tipos["numericas"]) >= 2:
+                x_col = tipos["numericas"][0]
+                y_col = tipos["numericas"][1]
+
+                fig_kmeans = px.scatter(
+                    df_cluster,
+                    x=x_col,
+                    y=y_col,
+                    color=df_cluster["cluster_kmeans"].astype(str),
+                    title=f"KMeans: {x_col} vs {y_col}",
+                    labels={"color": "cluster_kmeans"}
+                )
+                st.plotly_chart(fig_kmeans, use_container_width=True)
+
+                fig_dbscan = px.scatter(
+                    df_cluster,
+                    x=x_col,
+                    y=y_col,
+                    color=df_cluster["cluster_dbscan"].astype(str),
+                    title=f"DBSCAN: {x_col} vs {y_col}",
+                    labels={"color": "cluster_dbscan"}
+                )
+                st.plotly_chart(fig_dbscan, use_container_width=True)
 
     with tab5:
         if tipos["numericas"]:
