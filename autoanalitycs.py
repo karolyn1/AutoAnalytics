@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import seaborn as sns
+import statsmodels.api as sm 
 import matplotlib.pyplot as plt
 import plotly.express as px
 import io
@@ -82,6 +83,7 @@ st.markdown("""
 # =========================
 
 def detectar_tipos(df):
+    # Usamos métodos de pandas y numpy
     # Clasifica las columnas del DataFrame según su tipo de dato
     return {
         "numericas": df.select_dtypes(include=[np.number]).columns.tolist(),
@@ -533,8 +535,8 @@ st.markdown(
 if archivo:
   
 
-    if archivo:
-        if archivo.name.endswith(".csv"):
+    
+    if archivo.name.endswith(".csv"):
         # Leer primera línea para detectar separador
             first_line = archivo.readline().decode("utf-8")
             archivo.seek(0)  # volver al inicio
@@ -546,10 +548,11 @@ if archivo:
             else:
             # Si no hay ni coma ni punto y coma, usar read_csv normal
                 df = pd.read_csv(archivo)
-        else:
+    else:
             df = pd.read_excel(archivo)
 
     df = df.dropna() #eliminamos nulos
+    df = df.drop_duplicates() #elimnamos duplicados
     st.markdown(
         '<div class="section-title"><i class="fa-solid fa-table"></i> Vista previa de los datos</div>',
         unsafe_allow_html=True
@@ -704,6 +707,23 @@ if archivo:
              # Streamlit muestra tabla de outliers por Isolation Forest
             st.markdown('<div class="sub-title"><i class="fa-solid fa-shield-halved"></i> Outliers Isolation Forest</div>', unsafe_allow_html=True)
             st.dataframe(iso_df)
+
+            st.markdown("### 🚨 Resumen de Outliers")
+
+            st.markdown(
+            f'<div class="alert-box">Z-score detectó {len(z_df)} outliers en {columna_outlier}.</div>',
+            unsafe_allow_html=True
+)
+
+            st.markdown(
+            f'<div class="alert-box">IQR detectó {len(iqr_df)} outliers en {columna_outlier}.</div>',
+            unsafe_allow_html=True
+            )
+
+            st.markdown(
+    f'<div class="alert-box">Isolation Forest detectó {len(iso_df)} outliers globales.</div>',
+    unsafe_allow_html=True
+)
             
     with tab4:
         if tipos["numericas"]:
@@ -741,7 +761,30 @@ if archivo:
                 unsafe_allow_html=True
             )
             st.dataframe(df_cluster.head())
+            #Insights de clustering
+            st.markdown(
+                '<div class="sub-title"><i class="fa-solid fa-chart-scatter"></i> Insights de clustering</div>',
+                unsafe_allow_html=True
+            )
 
+            resumen_clusters = df_cluster.groupby("cluster_kmeans")[tipos["numericas"]].mean()
+
+            for cluster_id, fila in resumen_clusters.iterrows():
+                st.markdown(
+                    f'<div class="insight-box">'
+                    f'Cluster <b>{cluster_id}</b> presenta valores promedio de: '
+                    f'{", ".join([f"{col} = {round(fila[col],2)}" for col in resumen_clusters.columns])}'
+                    f'</div>',
+                    unsafe_allow_html=True
+            )
+                
+                ruido = (df_cluster["cluster_dbscan"] == -1).sum()
+
+            if ruido > 0:
+                st.markdown(
+                f'<div class="alert-box">DBSCAN detectó <b>{ruido}</b> puntos como ruido (outliers).</div>',
+                unsafe_allow_html=True
+                )
             # Gráficos de clustering
             st.markdown(
                 '<div class="sub-title"><i class="fa-solid fa-chart-scatter"></i> Gráficos de clustering</div>',
