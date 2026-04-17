@@ -337,8 +337,6 @@ def generar_pdf_visualizaciones(df, columnas_numericas):
         figs.append(histograma_matplotlib(df, col))
     return fig_to_pdf_bytes(figs)
 
-
-
 #  Relaciones bivariadas
 def mostrar_relaciones(df, tipos):
     
@@ -551,6 +549,7 @@ if archivo:
         else:
             df = pd.read_excel(archivo)
 
+    df = df.dropna() #eliminamos nulos
     st.markdown(
         '<div class="section-title"><i class="fa-solid fa-table"></i> Vista previa de los datos</div>',
         unsafe_allow_html=True
@@ -558,13 +557,13 @@ if archivo:
     # Streamlit muestra la vista previa de los datos
     st.dataframe(df.head())
 
-    tipos = detectar_tipos(df)
+    tipos = detectar_tipos(df) # iniciamos con el análisis detectando el tipo de data
 
     st.sidebar.markdown(
         '<div class="sub-title"><i class="fa-solid fa-layer-group"></i> Tipos de variables detectadas</div>',
         unsafe_allow_html=True
     )
-    st.sidebar.write(tipos)
+    st.sidebar.write(tipos) # colocamos en el sidebar los tipos detectados del dataset
 
     # Calcular correlación una sola vez para compartirla entre tabs
     corr_pearson = None
